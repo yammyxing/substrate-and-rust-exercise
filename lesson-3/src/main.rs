@@ -7,19 +7,19 @@ fn handle_client_request(mut stream: TcpStream) -> Result<(), Error>{
     // 打印客户端请求地址和端口
     println!("new connection from: {}", stream.peer_addr()?);
 
-    // 声明一个mutable的临时保存数据的缓冲区 buffer，并清零
-    let mut buf = [0; 512];
+    // 声明一个mutable的临时保存数据的缓冲区 bufferfer，并清零
+    let mut buffer = [0; 512];
     // 无条件循环体，服务不停歇
     loop {
         // 读取请求流内容，返回已读取的数据的长度，这里使用 ? 运算符来处理调用中可能的错误
-        let bytes_read = stream.read(&mut buf)?;
-        // 如果已到达流的末尾，打印表示读取完毕，并跳出循环
+        let bytes_read = stream.read(&mut buffer)?;
+        println!("echo: {0}", String::from_utf8_lossy(&buffer[..]));
+        // 如果已到达流的末尾，并跳出循环
         if bytes_read == 0 {
-            println!("hello world");
             return Ok(());
         }
         // 切片并将数据写回流
-        stream.write(&buf[..bytes_read])?;
+        stream.write(&buffer[..bytes_read])?;
     }
 }
 

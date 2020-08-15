@@ -3,13 +3,13 @@ extern crate clap;
 use clap::{App, Arg, SubCommand};
 use std::ffi::OsString;
 
-struct HelloArgs {
+struct Introduction {
     times: i32,
     name: String,
     age: String
 }
 
-impl HelloArgs {
+impl Introduction {
     fn new() -> Self {
         Self::new_from(std::env::args_os().into_iter()).unwrap_or_else(|e| e.exit())
     }
@@ -72,7 +72,7 @@ impl HelloArgs {
             }
         }
 
-        Ok(HelloArgs {
+        Ok(Introduction {
             times: 0,
             name: name.to_string(),
             age: age.to_string()
@@ -80,7 +80,7 @@ impl HelloArgs {
     }
 }
 
-impl Iterator for HelloArgs {
+impl Iterator for Introduction {
     type Item = i32;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -94,13 +94,24 @@ impl Iterator for HelloArgs {
     }
 }
 
+pub trait Display {
+    fn print(&self) -> String;
+}
+
+impl Display for Introduction {
+    fn print(&self) -> String {
+        format!("my name is {}, my age is {}", self.name, self.age)
+    }
+}
+
 fn main() {
-    let hello = HelloArgs::new();
-    let HelloArgs { times: _, name, age } = HelloArgs::new();
+    let hello = Introduction::new();
+    // let Introduction { times: _, name, age } = Introduction::new();
 
     // println!("{:?}", hello.next());
 
-    println!("Hello, I'm an ai, my name is {0}, my age is {1}.", name, age);
+    // println!("Hello, I'm an ai, my name is {0}, my age is {1}.", name, age);
+    println!("Hello, I'm an ai, {}.", hello.print());
     for _item in hello {
         println!("Have a good day!");
     }

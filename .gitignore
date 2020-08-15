@@ -1,0 +1,6 @@
+*.swp
+target/
+main
+**/*.rs.bk
+.DS_Store
+*.pdb

@@ -1,8 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, StorageMap};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage,
+	ensure, dispatch,
+};
 use frame_system::ensure_signed;
-use sp_std::vec::Vec;
+// use sp_std::vec::Vec;
+use sp_std::prelude::*;
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Trait: frame_system::Trait {
@@ -40,12 +50,9 @@ decl_event!(
 // Errors inform users that something went wrong.
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		/// The proof has already been claimed.
-		ProofAlreadyClaimed,
-		/// The proof does not exist, so it cannot be revoked.
-		NoSuchProof,
-		/// The proof is claimed by another account, so caller can't revoke it.
-		NotProofOwner,
+		ProofAlreadyExist,
+		ClaimNotExist,
+		NotClaimOwner
 	}
 }
 
@@ -61,48 +68,68 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Allow a user to claim ownership of an unclaimed proof.
-		#[weight = 10_000]
-		fn create_claim(origin, proof: Vec<u8>) {
+		#[weight = 0]
+		pub fn create_claim(origin, claim: Vec<u8>) -> dispatch::DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
 			let sender = ensure_signed(origin)?;
 
 			// Verify that the specified proof has not already been claimed.
-			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
+			ensure!(!Proofs::<T>::contains_key(&claim), Error::<T>::ProofAlreadyExist);
 
 			// Get the block number from the FRAME System module.
-			let current_block = <frame_system::Module<T>>::block_number();
+			// let current_block = <frame_system::Module<T>>::block_number();
 
 			// Store the proof with the sender and block number.
-			Proofs::<T>::insert(&proof, (&sender, current_block));
+			// Proofs::<T>::insert(&proof, (&sender, current_block));
+			Proofs::<T>::insert(&claim, (sender.clone(), frame_system::Module::<T>::block_number()));
 
 			// Emit an event that the claim was created.
-			Self::deposit_event(RawEvent::ClaimCreated(sender, proof));
+			Self::deposit_event(RawEvent::ClaimCreated(sender, claim));
+
+			Ok(())
 		}
 
 		/// Allow the owner to revoke their claim.
-		#[weight = 10_000]
-		fn revoke_claim(origin, proof: Vec<u8>) {
+		#[weight = 0]
+		pub fn revoke_claim(origin, claim: Vec<u8>) -> dispatch::DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
 			let sender = ensure_signed(origin)?;
 
 			// Verify that the specified proof has been claimed.
-			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
+			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
 			// Get owner of the claim.
-			let (owner, _) = Proofs::<T>::get(&proof);
+			let (owner, _) = Proofs::<T>::get(&claim);
 
 			// Verify that sender of the current call is the claim owner.
-			ensure!(sender == owner, Error::<T>::NotProofOwner);
+			ensure!(sender == owner, Error::<T>::NotClaimOwner);
 
 			// Remove claim from storage.
-			Proofs::<T>::remove(&proof);
+			Proofs::<T>::remove(&claim);
 
 			// Emit an event that the claim was erased.
-			Self::deposit_event(RawEvent::ClaimRevoked(sender, proof));
+			Self::deposit_event(RawEvent::ClaimRevoked(sender, claim));
+
+			Ok(())
+		}
+
+		#[weight = 0]
+		pub fn transfer_claim(origin, claim: Vec<u8>, dest: T::AccountId) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
+
+			let (owner, _) = Proofs::<T>::get(&claim);
+
+			ensure!(owner == sender, Error::<T>::NotClaimOwner);
+
+			Proofs::<T>::insert(&claim, (dest, frame_system::Module::<T>::block_number()));
+
+			Ok(())
 		}
 	}
 }

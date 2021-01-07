@@ -2,7 +2,7 @@
 
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
-	ensure, dispatch,
+	ensure, dispatch, traits::{Get}
 };
 use frame_system::ensure_signed;
 // use sp_std::vec::Vec;
@@ -18,6 +18,9 @@ mod tests;
 pub trait Trait: frame_system::Trait {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
+	// u32 max length
+	type MaxClaimLength: Get<u32>;
 }
 
 // The pallet's runtime storage items.
@@ -52,7 +55,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		ProofAlreadyExist,
 		ClaimNotExist,
-		NotClaimOwner
+		NotClaimOwner,
+		ProofTooLong
 	}
 }
 
@@ -77,6 +81,9 @@ decl_module! {
 
 			// Verify that the specified proof has not already been claimed.
 			ensure!(!Proofs::<T>::contains_key(&claim), Error::<T>::ProofAlreadyExist);
+
+			// ensure max length
+			ensure!(T::MaxClaimLength::get() >= claim.len() as u32, Error::<T>::ProofTooLong);
 
 			// Get the block number from the FRAME System module.
 			// let current_block = <frame_system::Module<T>>::block_number();

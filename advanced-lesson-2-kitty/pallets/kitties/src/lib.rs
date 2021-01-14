@@ -206,12 +206,8 @@ impl<T: Trait> Module<T> {
          Ok(kitty_id)
     }
 
-    fn do_transfer(
-        sender: &T::AccountId,
-        to: &T::AccountId,
-        kitty_id: T::KittyIndex,
-    ) -> DispatchResult {
-        // 判断小猫归属，如果属于sender，方可进行转移
+    fn do_transfer(sender: &T::AccountId, to: &T::AccountId, kitty_id: T::KittyIndex) -> DispatchResult {
+        // 判断小猫归属，如果属于sender，才可以进行转移
         let item = <OwnedKitties<T>>::get((&sender, Some(kitty_id)));
         match item {
             Some(_v) => {
@@ -282,7 +278,7 @@ mod tests {
     type Randomness = pallet_randomness_collective_flip::Module<Test>;
 
 	impl Trait for Test {
-        type Event = ();
+        // type Event = ();
         type Randomness = Randomness;
         type KittyIndex = u32;
     }
@@ -317,7 +313,7 @@ mod tests {
 	// #[test]
 	// fn owned_kitties_can_remove_values() {
 	// 	new_test_ext().execute_with(|| {
-			
+
 	// 	});
 	// }
 }

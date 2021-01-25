@@ -17,50 +17,65 @@ export default function Kitties (props) {
   const [kitties, setKitties] = useState([]);
   const [status, setStatus] = useState('');
 
-  const fetchKittyCnt = () => {
+  const fetchKittyCnt = async () => {
     /* TODO: 加代码，从 substrate 端读取数据过来 */
     if (!api || !keyring) {
       return;
     }
     let unsubscribe = null
     // console.log("----:", api.query.kittiesModule)
-    api.query.kittiesModule.kittiesCount(count => {
+    unsubscribe = await api.query.kittiesModule.kittiesCount(count => {
       setKittyCnt(count.toNumber());
     })
-    .then(res => {
-      // console.log("res:", res)
-      unsubscribe = res;
-    })
-    .catch(error => {
-      console.log(error)
-    })
+
     return () => unsubscribe && unsubscribe();
   };
 
   const fetchKitties = () => {
     /* TODO: 加代码，从 substrate 端读取数据过来 */
-    let unsubscribe = null
-    let keys = [...Array(kittyCnt.length).keys()]
-    api.query.kittiesModule.kitties.multi(keys, _kitties => {
-      console.log("_kitties:", _kitties);
-      setKitties(_kitties.map((item, idx) => ({
-        dna: item.hash.toHuman(),
-        id: idx,
-        is_owner: true
-      })));
-    })
-    .then(suc => {
-      unsubscribe = suc;
-    })
-    .catch(error => {
-      console.warn(error)
-    })
+    let unsubDna = null;
+    let unsubOwner = null;
+    let unsubPrice = null;
 
-    return () => unsubscribe && unsubscribe();
+    const asyncFetch = async () => {
+      const kittyIndices = [...Array(kittyCnt).keys()];
+
+      unsubDna = await api.query.kittiesModule.kitties.multi(
+        kittyIndices,
+        dnas => setKittyDNAs(dnas.map(dna => dna.value.toU8a()))
+      );
+
+      unsubOwner = await api.query.kittiesModule.kittyOwners.multi(
+        kittyIndices,
+        owners => setKittyOwners(owners.map(owner => owner.toHuman()))
+      );
+
+      unsubPrice = await api.query.kittiesModule.kittyPrices.multi(
+        kittyIndices,
+        prices => setKittyPrices(prices.map(price => price.isSome && price.toHuman()))
+      );
+    };
+
+    asyncFetch();
+
+    // return the unsubscription cleanup function
+    return () => {
+      unsubDna && unsubDna();
+      unsubOwner && unsubOwner();
+      unsubPrice && unsubPrice();
+    };
   };
 
   const populateKitties = () => {
     /* TODO: 加代码，从 substrate 端读取数据过来 */
+    const kittyIndices = [...Array(kittyCnt).keys()];
+    const kitties = kittyIndices.map(idx => ({
+      id: idx,
+      dna: kittyDNAs[ind],
+      owner: kittyOwners[ind],
+      price: kittyPrices[ind]
+    }));
+    setKitties(kitties);
   };
 
   useEffect(fetchKittyCnt, [api, keyring]);
